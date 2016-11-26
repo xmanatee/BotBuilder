@@ -45,17 +45,12 @@ var calling = require('../calling/');
 var prompts = require('./prompts');
 var keys = require('./keys');
 
-//=========================================================
-// Bot Setup
-//=========================================================
-
-// Setup Restify Server
 var server = restify.createServer();
 server.listen(process.env.port || process.env.PORT || 3978, function () {
     console.log('%s listening to %s', server.name, server.url);
 });
 
-// Create chat bot
+
 var chatConnector = new builder.ChatConnector({
     appId: keys.MICROSOFT_APP_ID,
     appPassword: keys.MICROSOFT_APP_PASSWORD
@@ -63,7 +58,7 @@ var chatConnector = new builder.ChatConnector({
 var chatBot = new builder.UniversalBot(chatConnector);
 server.post('/api/messages', chatConnector.listen());
 
-// Create calling bot
+
 var connector = new calling.CallConnector({
     callbackUrl: keys.CALLBACK_URL,
     appId: keys.MICROSOFT_APP_ID,
@@ -72,17 +67,44 @@ var connector = new calling.CallConnector({
 var bot = new calling.UniversalCallBot(connector);
 server.post('/api/calls', connector.listen());
 
-//=========================================================
-// Chat Dialogs
-//=========================================================
 
-chatBot.dialog('/', function (session) {
-    session.send(prompts.chatGreeting);
-});
+chatBot.dialog('/', [
+    function (session) {
+        session.send(prompts.chatGreeting);
+        session.beginDialog('/waiting');
+    },
+    function (session, results) {
+        console.log("Stopping the bot.");
+        session.send(prompts.goodbye);
+    }
+]);
 
-//=========================================================
-// Calling Dialogs
-//=========================================================
+var state = "recorded";
+var lastDump;
+
+function reply(dump) {
+    return "sample message";
+}
+
+chatBot.dialog('/waiting', [
+    function (session) {
+        while (state != "recorded") {
+            setTimeout(function() {
+                console.log('still waiting.');
+            }, 1000);
+        }
+        session.replaceDialog('/replying');
+    }
+]);
+
+chatBot.dialog('/replying', [
+    function (session) {
+        var message = reply(lastDump);
+        session.send(message);
+        state = 'replied';
+        session.replaceDialog('/waiting');
+    }
+]);
 
 bot.dialog('/', [
     function (session) {
@@ -100,11 +122,12 @@ bot.dialog('/menuRecord', [
             playBeep: true,
             recordingFormat: 'wav',
             maxDurationInSeconds: 500,
-            maxSilenceTimeoutInSeconds: 15});
+            maxSilenceTimeoutInSeconds: 2});
         console.log("Started Recording");
     },
     function (session, results) {
         if (results.response) {
+            console.log("Reason : " + results.resumed);
             var data = results.response.recordedAudio;
             var date = new Date();
             var filename = session.userData.id
@@ -115,32 +138,10 @@ bot.dialog('/menuRecord', [
                 if(err) {return console.log(err);}
                 console.log("The file " + filename + " was saved!");
             });
+            lastDump = data;
+            state = "recorded";
         } else {
-            session.endDialog(prompts.canceled);
-        }
-    },
-    function (session, results) {
-        // The menu runs a loop until the user chooses to (quit).
-        session.replaceDialog('/menuRecord');
-    }
-]);
-
-bot.dialog('/menuNotes', [
-    function (session) {
-        calling.Prompts.text(session, prompts.notes.prompt);
-    },
-    function (session, results) {
-        if (results.response) {
-            var data = results.response.recordedAudio;
-
-            var filename = session.userData.name + '_rec_' + '.wav';
-            fs.writeFile(filename, data, function(err) {
-                if(err) {
-                    return console.log(err);
-                }
-                console.log("The file was saved!");
-            });
-        } else {
+            console.log("Reason : " + results.resumed);
             session.endDialog(prompts.canceled);
         }
     },
