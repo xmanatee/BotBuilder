@@ -44,6 +44,7 @@ var builder = require('../core/');
 var calling = require('../calling/');
 var prompts = require('./prompts');
 var keys = require('./keys');
+var repliers = require('./repliers');
 
 var server = restify.createServer();
 server.listen(process.env.port || process.env.PORT || 3978, function () {
@@ -67,58 +68,47 @@ var connector = new calling.CallConnector({
 var bot = new calling.UniversalCallBot(connector);
 server.post('/api/calls', connector.listen());
 
+var state = "not-present";
+var lastDump;
 
 chatBot.dialog('/', [
     function (session) {
-        session.send(prompts.chatGreeting);
-        session.beginDialog('/waiting');
+        session.send("aka");
+        session.beginDialog('/replying');
     },
-    function (session, results) {
+    function (session) {
         console.log("Stopping the bot.");
         session.send(prompts.goodbye);
     }
 ]);
 
-var state = "recorded";
-var lastDump;
-
-function reply(dump) {
-    return "sample message";
-}
-
-chatBot.dialog('/waiting', [
-    function (session) {
-        while (state != "recorded") {
-            setTimeout(function() {
-                console.log('still waiting.');
-            }, 1000);
-        }
-        session.replaceDialog('/replying');
-    }
-]);
-
 chatBot.dialog('/replying', [
     function (session) {
-        var message = reply(lastDump);
-        session.send(message);
-        state = 'replied';
-        session.replaceDialog('/waiting');
+        if (state != "present") {
+            session.replaceDialog('/');
+        }
+        else {
+            session.send(generateReply(lastDump));
+        }
     }
 ]);
 
-bot.dialog('/', [
+bot.dialog('/',
     function (session) {
+        console.log("CallBot started");
         session.send(prompts.welcome);
         session.beginDialog('/menuRecord');
+        console.log("c");
     },
     function (session, results) {
         session.send(prompts.goodbye);
     }
-]);
+);
 
 bot.dialog('/menuRecord', [
     function (session) {
-        calling.Prompts.record(session, prompts.record.prompt, {
+        console.log("bfr");
+        calling.Prompts.record(session, prompts.record.intro, {
             playBeep: true,
             recordingFormat: 'wav',
             maxDurationInSeconds: 500,
@@ -139,7 +129,7 @@ bot.dialog('/menuRecord', [
                 console.log("The file " + filename + " was saved!");
             });
             lastDump = data;
-            state = "recorded";
+            state = "present";
         } else {
             console.log("Reason : " + results.resumed);
             session.endDialog(prompts.canceled);

@@ -3,8 +3,8 @@ module.exports = {
     welcome: "Yo!",
     canceled: "You canceled",
     goodbye: "Ok... See you later!",
-    menu: {
-        prompt: "Watsup?"
+    record: {
+        intro: "Watsup?"
     },
     notes: {
         prompt: "Launching Notes!"
