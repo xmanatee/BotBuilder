@@ -84,21 +84,26 @@ chatBot.dialog('/', [
 
 chatBot.dialog('/replying', [
     function (session) {
-        if (state != "present") {
-            session.replaceDialog('/');
-        }
-        else {
-            session.send(generateReply(lastDump));
-        }
+
+        while (state != "present") {}
+        session.send(repliers.generateReply(lastDump));
+
+
+        // if (state != "present") {
+        //     session.replaceDialog('/replying');
+        // }
+        // else {
+        //     session.send(generateReply(lastDump));
+        // }
     }
 ]);
 
 bot.dialog('/',
     function (session) {
-        console.log("CallBot started");
+        // console.log("CallBot started");
         session.send(prompts.welcome);
         session.beginDialog('/menuRecord');
-        console.log("c");
+        // console.log("c");
     },
     function (session, results) {
         session.send(prompts.goodbye);
