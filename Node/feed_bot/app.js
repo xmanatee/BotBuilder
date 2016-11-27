@@ -31,8 +31,10 @@ server.post('/api/calls', connector.listen());
 
 // ##############################
 
+
 var state = "not-present";
 var lastDump;
+var lastDumpFileName;
 
 chatBot.dialog('/', [
     function (session) {
@@ -48,16 +50,15 @@ chatBot.dialog('/', [
 chatBot.dialog('/replying', [
     function (session) {
         while (state != "present") {}
-        session.send("Hello..");
-        var fileName = "output.txt"
-        var surl = intelligence.generatePNG(fileName)
-        var msg = new builder.Message(session)
+        var textFileName = intelligence.speech2Text(lastDumpFileName);
+        var pngUrl = intelligence.generatePNG(textFileName);
+        var pngMessage = new builder.Message(session)
             .attachments([{
                 contentType: "image/png",
-                contentUrl: surl
+                contentUrl: pngUrl
             }]);
-        session.send(msg);
-        session.send(intelligence.generateSummary(fileName));
+        session.send(pngMessage);
+        session.send(intelligence.generateSummary(textFileName));
     }
 ]);
 
@@ -77,7 +78,7 @@ bot.dialog('/',
 bot.dialog('/menuRecord', [
     function (session) {
         console.log("bfr");
-        calling.Prompts.record(session, prompts.record.intro, {
+        calling.Prompts.record(session, prompts.record, {
             playBeep: true,
             recordingFormat: 'wav',
             maxDurationInSeconds: 500,
@@ -93,11 +94,12 @@ bot.dialog('/menuRecord', [
                 + '_' + date.getDay()
                 + '_' + date.getHours()
                 + '_' + date.getMinutes() + '.wav';
-            fs.writeFile(filename, data, function(err) {
+            fs.writeFile('records/' + filename, data, function(err) {
                 if(err) {return console.log(err);}
                 console.log("The file " + filename + " was saved!");
             });
             lastDump = data;
+            lastDumpFileName = filename;
             state = "present";
         } else {
             console.log("Reason : " + results.resumed);

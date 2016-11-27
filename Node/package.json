@@ -15,7 +15,9 @@
     "request": "^2.78.0",
     "restify": "^4.2.0",
     "rsa-pem-from-mod-exp": "^0.8.4",
-    "sprintf-js": "^1.0.3"
+    "sprintf-js": "^1.0.3",
+    "lda": "^0.1.9",
+    "unirest": "^0.5.1"
   },
   "devDependencies": {
     "mocha": "^2.4.5"

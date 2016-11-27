@@ -1,6 +1,7 @@
 var lda = require('lda');
-var keys = require('keys');
+var keys = require('./keys');
 var unirest = require('unirest');
+var fs = require('fs');
 
 var get_text_dict = function(result) {
     var temp_dict = {};
@@ -39,6 +40,31 @@ var get_text_dict = function(result) {
 var result = [];
 
 module.exports = {
+    speech2Text: function(fileName) {
+
+        const Speech = require('@google-cloud/speech');
+        const projectId = keys.GOOGLE_API_PROJECT_ID;
+
+        const speechClient = Speech({
+            projectId: projectId
+        });
+
+        const options = {
+            encoding: 'LINEAR16',
+            sampleRate: 16000
+        };
+
+
+        speechClient.recognize("records/" + fileName, options)
+            .then((results) => {
+                const transcription = results[0];
+                fs.appendFile("records/" + fileName + '.txt',
+                    transcription + '. ',
+                    function (err) {});
+            });
+        return "records/" + fileName + '.txt';
+    },
+
     generatePNG: function (textFile) {
         var content = fs.readFileSync(textFile, 'utf8');
         var documents = content.match(/[^\.!\?]+[\.!\?]+/g);
