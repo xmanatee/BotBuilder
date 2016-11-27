@@ -2,6 +2,7 @@ var lda = require('lda');
 var keys = require('./keys');
 var unirest = require('unirest');
 var fs = require('fs');
+var Promise = require('bluebird');
 
 var get_text_dict = function(result) {
     var temp_dict = {};
@@ -54,23 +55,29 @@ module.exports = {
             sampleRate: 16000
         };
 
+        var srcFileName = "records/" + fileName;
+        var tgtFileName = srcFileName + ".txt";
 
-        speechClient.recognize("records/" + fileName, options)
+        return speechClient.recognize(srcFileName, options)
             .then((results) => {
                 const transcription = results[0];
-                fs.appendFile("records/" + fileName + '.txt',
-                    transcription + '. ',
-                    function (err) {});
+                console.log(transcription);
+                return new Promise((resolve, reject) => {
+                    fs.appendFile(tgtFileName, transcription + ".", function (err) {
+                        if (err) return reject(err);
+                        return resolve(tgtFileName);
+                    });
+                });
+
             });
-        return "records/" + fileName + '.txt';
     },
 
-    generatePNG: function (textFile) {
+    generatePNG: function (textFile, callback) {
         var content = fs.readFileSync(textFile, 'utf8');
         var documents = content.match(/[^\.!\?]+[\.!\?]+/g);
         var result = lda(documents, 2, 5);
         var result_dict = get_text_dict(result);
-        var result_url = unirest.post("https://wordcloudservice.p.mashape.com/generate_wc")
+        return unirest.post("https://wordcloudservice.p.mashape.com/generate_wc")
             .header("X-Mashape-Key", keys.MASHAPE_KEY)
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
@@ -80,21 +87,21 @@ module.exports = {
                 "rotate": "TRUE", "textblock": result_dict[0]
             })
             .end(function (result) {
-                return result;
+                callback(result.raw_body.url);
             });
-        return result.response.raw_body.url;
     },
-    generateSummary: function (textFile) {
+    generateSummary: function (textFile, callback) {
         var content = fs.readFileSync(textFile, 'utf8');
-        var summary;
-        unirest.post(keys.CALLBACK_SUMMARY_URL)
+        return unirest.post(keys.CALLBACK_SUMMARY_URL)
             .header("X-Mashape-Key", keys.MASHAPE_KEY)
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
             .send({"Percent": "30", "Language": "en", "Text": content})
             .end(function (result) {
-                summary = result.body;
+                console.log("<--");
+                console.log(result.raw_body);
+                console.log("-->");
+                callback(result.raw_body);
             });
-        return summary;
     }
 };

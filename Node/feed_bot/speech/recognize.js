@@ -26,17 +26,27 @@
 const Speech = require('@google-cloud/speech');
 
 // [START speech_sync_recognize]
-function syncRecognize (filename) {
-    // Instantiates a client
+function syncRecognize (filename, callback) {
     const speech = Speech();
 
     const config = {
-        // Configure these settings based on the audio you're transcribing
         encoding: 'LINEAR16',
         sampleRate: 16000
     };
 
-    // Detects speech in the audio file, e.g. "./resources/audio.raw"
+
+    speech.recognize(filename, config, (err, results) => {
+        if (err) {
+            callback(err);
+            return;
+        }
+
+        console.log('Results:', results);
+        callback();
+    });
+}
+
+function syncRecognize (filename) {
     return speech.recognize(filename, config)
         .then((results) => {
             const transcription = results[0];

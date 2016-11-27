@@ -38,7 +38,6 @@ var lastDumpFileName;
 
 chatBot.dialog('/', [
     function (session) {
-        session.send("aka");
         session.beginDialog('/replying');
     },
     function (session) {
@@ -50,25 +49,39 @@ chatBot.dialog('/', [
 chatBot.dialog('/replying', [
     function (session) {
         while (state != "present") {}
-        var textFileName = intelligence.speech2Text(lastDumpFileName);
-        var pngUrl = intelligence.generatePNG(textFileName);
-        var pngMessage = new builder.Message(session)
-            .attachments([{
-                contentType: "image/png",
-                contentUrl: pngUrl
-            }]);
-        session.send(pngMessage);
-        session.send(intelligence.generateSummary(textFileName));
+        console.log("dump present!");
+        intelligence.speech2Text(lastDumpFileName).then((textFileName) => {
+            console.log("generated text: " + textFileName);
+
+            var content = fs.readFileSync(textFileName, 'utf8');
+
+            session.send(content);
+
+            intelligence.generatePNG(textFileName, function (pngUrl) {
+                console.log(pngUrl);
+                var pngMessage = new builder.Message(session)
+                    .attachments([{
+                        contentType: "image/png",
+                        contentUrl: pngUrl
+                    }]);
+                session.send(pngMessage);
+            });
+
+            intelligence.generateSummary(textFileName, function (mes) {
+                session.send(mes);
+            });
+            // console.log("[-");
+            // console.log(message_2);
+            // console.log("-]");
+        });
     }
 ]);
 
 
 bot.dialog('/',
     function (session) {
-        // console.log("CallBot started");
         session.send(prompts.welcome);
         session.beginDialog('/menuRecord');
-        // console.log("c");
     },
     function (session, results) {
         session.send(prompts.goodbye);
@@ -82,7 +95,7 @@ bot.dialog('/menuRecord', [
             playBeep: true,
             recordingFormat: 'wav',
             maxDurationInSeconds: 500,
-            maxSilenceTimeoutInSeconds: 2});
+            maxSilenceTimeoutInSeconds: 3});
         console.log("Started Recording");
     },
     function (session, results) {
@@ -105,9 +118,5 @@ bot.dialog('/menuRecord', [
             console.log("Reason : " + results.resumed);
             session.endDialog(prompts.canceled);
         }
-    },
-    function (session, results) {
-        // The menu runs a loop until the user chooses to (quit).
-        session.replaceDialog('/menuRecord');
     }
 ]);
